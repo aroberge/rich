@@ -189,6 +189,33 @@ class CodeBlock(TextElement):
         yield syntax
 
 
+class InlineCode(TextElement):
+    """Inline code with Syntax highlighting applied"""
+
+    style_name = "markdown.code"
+
+    @classmethod
+    def create(cls, markdown: "Markdown", node: Any) -> "InlineCode":
+        node_info = node.info or ""
+        lexer_name = node_info.partition(" ")[0]
+        return cls(lexer_name or "default", markdown.code_theme)
+
+    def __init__(self, lexer_name: str, theme: str) -> None:
+        self.lexer_name = lexer_name
+        self.theme = theme
+
+    def highlight(self, context: "MarkdownContext") -> str:
+        code = str(self.text)
+        syntax = Syntax(code, context.options.inline_code_lexer)
+        return syntax._highlight(context.options.inline_code_lexer)
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        code = str(self.text).rstrip()
+        yield Syntax(code, options.inline_code_lexer, theme=self.theme)
+
+
 class BlockQuote(TextElement):
     """A block quote."""
 
@@ -396,6 +423,7 @@ class Markdown(JupyterMixin):
         "list": ListElement,
         "item": ListItem,
         "image": ImageItem,
+        "code": InlineCode,
     }
     inlines = {"emph", "strong", "code", "strike"}
 
@@ -451,6 +479,15 @@ class Markdown(JupyterMixin):
                         context.on_text(current.destination)
                         context.leave_style()
                         context.on_text(")")
+            elif node_type == "code" and options.inline_code_lexer is not None:
+                element_class = self.elements.get(node_type)
+                element = element_class.create(self, current)
+                context.stack.push(element)
+                element.on_enter(context)
+                element.on_text(context, current.literal)
+                context.stack.pop()
+                yield from console.render(element, context.options)
+                element.on_leave(context)
             elif node_type in inlines:
                 if current.is_container():
                     if entering:

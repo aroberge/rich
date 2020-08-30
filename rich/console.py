@@ -94,6 +94,8 @@ class ConsoleOptions:
     """Overflow value override for renderable."""
     no_wrap: Optional[bool] = False
     """"Disable wrapping for text."""
+    inline_code_lexer: Optional[str] = None
+    """If lexer specific, use Syntax highlighting for inline code"""
 
     def update(
         self,
@@ -103,6 +105,7 @@ class ConsoleOptions:
         justify: JustifyMethod = None,
         overflow: OverflowMethod = None,
         no_wrap: bool = None,
+        inline_code_lexer: str = None,
     ) -> "ConsoleOptions":
         """Update values, return a copy."""
         options = replace(self)
@@ -118,6 +121,8 @@ class ConsoleOptions:
             options.overflow = overflow
         if no_wrap is not None:
             options.no_wrap = no_wrap
+        if inline_code_lexer is not None:
+            options.inline_code_lexer = inline_code_lexer
         return options
 
 
@@ -329,6 +334,7 @@ class Console:
         legacy_windows: bool = None,
         safe_box: bool = True,
         _environ: Dict[str, str] = None,
+        inline_code_lexer: str = None,
     ):
         # Copy of os.environ allows us to replace it for testing
         self._environ = os.environ if _environ is None else _environ
@@ -375,6 +381,7 @@ class Console:
         self._thread_locals = ConsoleThreadLocals()
         self._record_buffer: List[Segment] = []
         self._render_hooks: List[RenderHook] = []
+        self.inline_code_lexer = inline_code_lexer
 
     def __repr__(self) -> str:
         return f"<console width={self.width} {str(self._color_system)}>"
@@ -505,6 +512,7 @@ class Console:
             max_width=self.width,
             encoding=self.encoding,
             is_terminal=self.is_terminal,
+            inline_code_lexer=self.inline_code_lexer,
         )
 
     @property
